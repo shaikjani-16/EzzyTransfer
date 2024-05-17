@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 dotenv.config({
-  path: "./.env",
+  path: "../.env",
 });
 app.use("/api/v1", router);
 app.get("/", (req, res) => {
