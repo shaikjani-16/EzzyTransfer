@@ -7,14 +7,15 @@ const verifyJWT = async (req, res, next) => {
     req.cookies?.accessToken ||
     req.header("Authorization")?.replace("Bearer ", "");
   if (!token) {
-    return res.status(401).json({
-      message: "Please login",
-    });
+    return res.json({ status: 411, message: "Please login" });
   }
   const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  const user = await User.findById(decoded?._id).select("-password");
+  const user = await User.findById(decoded?._id || decoded?.userId).select(
+    "-password"
+  );
   if (!user) {
-    return res.status(401).json({
+    return res.json({
+      status: 411,
       message: "Unauthorized",
     });
   }

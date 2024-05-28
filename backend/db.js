@@ -46,5 +46,56 @@ const accounSchema = new mongoose.Schema({
     required: true,
   },
 });
+accounSchema.methods.sendMoney = async function (amount, to) {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const parsedAmount = parseInt(amount, 10);
+    if (isNaN(parsedAmount)) {
+      await session.abortTransaction();
+      session.endSession();
+      return { message: "Invalid amount" };
+    }
+
+    if (this.balance < parsedAmount) {
+      await session.abortTransaction();
+      session.endSession();
+      return { message: "Insufficient Balance" };
+    }
+
+    const recipient = await Account.findOne({ userId: to }).session(session);
+
+    if (!recipient) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        message: "Invalid account",
+      });
+    }
+
+    const recipientBalance = parseInt(recipient.balance, 10);
+    if (isNaN(recipientBalance)) {
+      await session.abortTransaction();
+      session.endSession();
+      return { message: "Invalid recipient balance" };
+    }
+
+    recipient.balance += parsedAmount;
+    this.balance -= parsedAmount;
+
+    await recipient.save({ session });
+    await this.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return { message: "Transfer successful" };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
 const Account = mongoose.model("Account", accounSchema);
 export { User, Account };

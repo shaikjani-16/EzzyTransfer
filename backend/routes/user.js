@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { User } from "../db.js";
+import { User, Account } from "../db.js";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import verifyJWT from "../utils/auth_middleware.js";
@@ -17,18 +17,15 @@ const signInSchema = z.object({
   password: z.string().min(8),
 });
 userRouter.post("/signup", async (req, res) => {
+  console.log(req.body);
   const { userName, password, firstName, lastName } = req.body;
   const { success } = signUpSchema.safeParse(req.body);
   if (!success) {
-    return res.status(411).json({
-      message: "Incorrect signUp",
-    });
+    return res.json({ status: 401, message: "validation failed" });
   }
   const user = await User.findOne({ userName });
   if (user) {
-    return res.status(411).json({
-      message: "User already exists",
-    });
+    return res.json({ status: 411, message: "user already exists" });
   }
   const createUser = await User.create({
     userName,
@@ -38,27 +35,40 @@ userRouter.post("/signup", async (req, res) => {
   });
   const userId = createUser._id;
   if (createUser) {
+    await Account.create({
+      userId,
+      balance: 1 + Math.random() * 10000,
+    });
+    const options = {
+      httpOnly: true, // Ensures the cookie is only accessible via web server
+      secure: process.env.NODE_ENV === "production", // Secure in production
+      sameSite: "strict", // Helps prevent CSRF attacks
+      maxAge: 3600000, // Optional: Set cookie expiry (1 hour in milliseconds)
+    };
+
     const token = jwt.sign(
       {
         userId,
       },
-      JWT_SECRET
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.TOKEN_EXPIRY_TIME }
     );
-    return res.status(201).json({
+
+    return res.cookie("accessToken", token, options).json({
       message: "User created",
       token: token,
+      status: 200,
     });
   }
   console.log(user);
 });
 
-userRouter.get("/signin", async (req, res) => {
+userRouter.post("/signin", async (req, res) => {
   const { userName, password } = req.body;
+  console.log(req.body);
   const { success } = signInSchema.safeParse(req.body);
   if (!success) {
-    return res.status(411).json({
-      message: "Incorrect signIn",
-    });
+    return res.json({ status: 401, message: "Incorrect format" });
   }
   const options = {
     httpOnly: true,
@@ -68,19 +78,18 @@ userRouter.get("/signin", async (req, res) => {
   if (user) {
     if (user.password == password) {
       const accessToken = await user.generateAccessToken();
+      console.log(accessToken);
 
-      res.status(200).cookie("accessToken", accessToken, options).json({
+      res.cookie("accessToken", accessToken).json({
         message: "User signed in successfully",
+        status: 200,
+        token: accessToken,
       });
     } else {
-      res.status(411).json({
-        message: "Incorrect password",
-      });
+      res.json({ status: 411, message: "Incorrect password" });
     }
   } else {
-    res.status(411).json({
-      message: "user not found",
-    });
+    res.json({ status: 411, message: "user not found" });
   }
 });
 userRouter.route("/logout").get(verifyJWT, async (req, res) => {
@@ -116,10 +125,11 @@ userRouter.route("/update").put(verifyJWT, async (req, res) => {
 });
 userRouter.get("/getUsers", async (req, res) => {
   const filter = req.query.filter || "";
+
   const users = await User.find({
     $or: [
       {
-        firsName: {
+        firstName: {
           $regex: filter,
         },
       },
