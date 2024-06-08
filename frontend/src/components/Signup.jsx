@@ -1,15 +1,17 @@
 import React, { useState } from "react";
+import { useSetRecoilState } from "recoil";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { nameAtom } from "../store/atom";
 const Signup = () => {
   const [username, setUsername] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
-  const handleSubmit = async () => {};
+  const setName = useSetRecoilState(nameAtom);
 
   return (
     <section className="bg-white dark:bg-gray-500 w-full">
@@ -19,11 +21,7 @@ const Signup = () => {
             <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
               Create an account
             </h1>
-            <form
-              className="space-y-4 md:space-y-6"
-              action="#"
-              onSubmit={handleSubmit}
-            >
+            <form className="space-y-4 md:space-y-6" action="#">
               <div>
                 <label
                   htmlFor="email"
@@ -110,8 +108,10 @@ const Signup = () => {
                       }
                     );
                     console.log(res?.data);
+
                     if (res.data.status === 200) {
-                      localStorage.setItem("token", res.data.token);
+                      setName(res.data.user?.firstName[0].toUpperCase());
+                      // localStorage.setItem("token", res.data.token);
                       toast.success(res.data.message);
                       navigate("/");
                     } else if (res.data.status === 401) {
@@ -129,13 +129,11 @@ const Signup = () => {
 
               <p className="text-sm font-light text-gray-500 dark:text-gray-400">
                 Already have an account?{" "}
-                <Link to="/signin">
-                  <a
-                    href="#"
-                    className="font-medium text-primary-600 hover:underline dark:text-primary-500"
-                  >
-                    Login here
-                  </a>
+                <Link
+                  to="/signin"
+                  className="font-medium text-primary-600 hover:underline dark:text-primary-500"
+                >
+                  Login here
                 </Link>
               </p>
             </form>
@@ -147,3 +145,4 @@ const Signup = () => {
 };
 
 export default Signup;
+// export { Name };

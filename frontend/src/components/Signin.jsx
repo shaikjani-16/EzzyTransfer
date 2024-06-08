@@ -2,10 +2,20 @@ import axios from "axios";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useSetRecoilState } from "recoil";
+import { nameAtom } from "../store/atom";
+
 const Signin = () => {
   const [userName, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  function setCookie(name, value, days) {
+    const date = new Date();
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+    const expires = "expires=" + date.toUTCString();
+    document.cookie = name + "=" + value + ";" + expires + ";path=/";
+  }
+  const setName = useSetRecoilState(nameAtom);
   return (
     <div className="w-full max-w-xs mx-auto mt-20">
       <form className="bg-white  rounded px-8 pt-6 pb-8 mb-4 shadow-lg">
@@ -57,11 +67,14 @@ const Signin = () => {
                     userName,
                     password,
                   }
+                  // { withCredentials: true }
                 );
-                console.log(res.data);
+
                 if (res.data.status === 200) {
                   toast.success(res.data.message);
-                  localStorage.setItem("token", res.data.token);
+                  setName(res.data.user?.firstName[0].toUpperCase());
+                  // localStorage.setItem("token", res.data.token);
+                  setCookie("accessToken", res.data.token, 1);
                   navigate("/");
                 } else {
                   toast.error(res.data.message);

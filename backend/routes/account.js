@@ -7,7 +7,7 @@ const accountRouter = Router();
 accountRouter.route("/balance").get(verifyJWT, async (req, res) => {
   const userId = req.user._id;
   const account = await Account.findOne({ userId });
-  res.json({ staus: 200, balance: account?.balance });
+  res.json({ status: 200, balance: account?.balance });
 });
 accountRouter.route("/send").post(verifyJWT, async (req, res) => {
   const session = await mongoose.startSession();
@@ -23,16 +23,15 @@ accountRouter.route("/send").post(verifyJWT, async (req, res) => {
 
     if (!account || account.balance < amount) {
       await session.abortTransaction();
-      return res.status(400).json({
-        message: "Insufficient balance",
-      });
+      return res.json({ status: 400, message: "Insufficient balance" });
     }
 
     const toAccount = await Account.findOne({ userId: to }).session(session);
 
     if (!toAccount) {
       await session.abortTransaction();
-      return res.status(400).json({
+      return res.json({
+        status: 400,
         message: "Invalid account",
       });
     }
@@ -50,6 +49,7 @@ accountRouter.route("/send").post(verifyJWT, async (req, res) => {
     // Commit the transaction
     await session.commitTransaction();
     res.json({
+      status: 200,
       message: "Transfer successful",
     });
   } catch (error) {
@@ -60,7 +60,8 @@ accountRouter.route("/send").post(verifyJWT, async (req, res) => {
     await session.abortTransaction();
 
     // Send a generic error message to the client
-    res.status(500).json({
+    res.json({
+      status: 500,
       message: "Transaction failed. Please try again later.",
     });
   } finally {
